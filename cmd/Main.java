@@ -92,7 +92,7 @@ public class Main
 					skl.write(outBytes);
 				}
 			}
-			pos+=outLen-2;
+			//pos+=outLen-2;
 		}
 		String nvm="nevermind.";
 		if (replacements!=0) nvm="";
@@ -125,7 +125,7 @@ public class Main
 			{
 				//fix index
 				pak.seek((entryId+1)*4);
-				for (int i=0; i<numPakContents-entryId; i++)
+				for (int i=0; i<=numPakContents-entryId; i++)
 				{
 					int offset = LittleEndian.getInt(pak.readInt());
 					pak.seek(pak.getFilePointer()-4);
@@ -161,7 +161,13 @@ public class Main
 		else if (src.isFile())
 		{
 			String nameLower = src.getName().toLowerCase();
-			if (nameLower.matches("[A-Za-z0-9]+_\\dp.pak") || nameLower.matches("[A-Za-z0-9]+_\\dp_dmg.pak"))
+			String[] nameArr = nameLower.split("_");
+			boolean checkForRegCostume=false, checkForDmgCostume=false;
+			checkForRegCostume = nameArr[nameArr.length-1].matches("\\dp.pak");
+			if (nameArr.length>2) 
+				checkForDmgCostume = nameArr[nameArr.length-2].matches("\\dp") && nameArr[nameArr.length-1].equals("dmg.pak");
+			if (checkForRegCostume || checkForDmgCostume)
+			//if (nameLower.matches("[A-Za-z0-9]+_\\dp.pak") || nameLower.matches("[A-Za-z0-9]+_\\dp_dmg.pak"))
 			{
 				RandomAccessFile pak = new RandomAccessFile(src,"rw");
 				if (isCharaCostumePak(pak))
@@ -170,6 +176,7 @@ public class Main
 					byte[] newSklLst = getUpdatedSkillList(getSkillList(pak,sklLstId),in,out);
 					overwritePak(pak,newSklLst,sklLstId);
 				}
+				else System.out.println("Skipping "+src.getName()+" (Reason: Faulty character costume PAK)...");
 			}
 		}
 	}
