@@ -1,17 +1,17 @@
 package cmd;
 //Tenkaichi Skill List Editor by ViveTheModder
+import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Scanner;
-
 import gui.App;
 
 public class Main 
 {
-	public static boolean bt2Mode, gui;
+	public static boolean bt2Mode, gui, replaceOnce;
 	public static int fileCnt=0;
 	public static final String[] BT2_SKL_LST_LANGS = 
 	{"German","French","Italian","Japanese","Korean (Unused)","Spanish","British English","American English"};
@@ -54,6 +54,7 @@ public class Main
 	}
 	public static byte[] getUpdatedSkillList(byte[] sklLst, String in, String out) throws IOException
 	{
+		if (sklLst==null) return null;
 		byte[] inBytes = in.getBytes(StandardCharsets.UTF_16LE);
 		byte[] outBytes = out.getBytes(StandardCharsets.UTF_16LE);
  		int inLen=inBytes.length, outLen=outBytes.length, diff=inLen-outLen;
@@ -94,11 +95,21 @@ public class Main
 					skl.seek(pos);
 					skl.write(outBytes);
 				}
+				if (replaceOnce) break;
 			}
 		}
 		String nvm="nevermind.";
 		if (replacements!=0) nvm="";
 		if (!gui) System.out.println(nvm);
+		else
+		{
+			if (nvm.equals("")) 
+			{
+				fileCnt++;
+				App.fileLabel.setForeground(new Color(133,170,5));
+			}
+			else App.fileLabel.setForeground(new Color(215,6,1));
+		}
 		
 		byte[] newSklLst = new byte[(int)skl.length()];
 		skl.seek(0);
@@ -109,6 +120,7 @@ public class Main
 	}
 	public static void overwritePak(RandomAccessFile pak, byte[] sklLst, int sklLstId) throws IOException
 	{
+		if (sklLst==null) return;
 		int start=43, numPakContents=252, entryId=sklLstId+start+1;
 		if (bt2Mode) 
 		{
@@ -176,12 +188,15 @@ public class Main
 					if (!gui) System.out.print("Replacing "+"\""+in+"\""+" with "+"\""+out+"\""+" for "+src.getName()+"... ");
 					else
 					{
-						fileCnt++;
 						App.fileLabel.setText(src.getAbsolutePath());
 						App.fileCntLabel.setText("Overwritten Costumes: "+fileCnt);
 					}
 					byte[] newSklLst = getUpdatedSkillList(getSkillList(pak,sklLstId),in,out);
-					overwritePak(pak,newSklLst,sklLstId);
+					if (newSklLst!=null && newSklLst.length%16==0) overwritePak(pak,newSklLst,sklLstId);
+					else
+					{
+						if (!gui)  System.out.println("Skipping "+src.getName()+" (Reason: Absent Skill List)...");
+					}
 				}
 				else 
 				{

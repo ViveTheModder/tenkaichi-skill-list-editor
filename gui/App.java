@@ -19,6 +19,7 @@ import java.net.URISyntaxException;
 import javax.swing.Box;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -29,7 +30,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.Timer;
@@ -44,10 +45,11 @@ public class App
 	private static double seconds=0;
 	private static File currFolder,lastFolder;
 	private static final Font BOLD = new Font("Tahoma", 1, 24);
+	private static final Font BOLD_S = new Font("Tahoma", 1, 14);
 	private static final Font MED = new Font("Tahoma", 0, 18);
 	private static final String HTML_A_START = "<html><a href=''>";
 	private static final String HTML_A_END = "</a></html>";
-	private static final String WINDOW_TITLE = "Tenkaichi Skill List Editor v1.2";
+	private static final String WINDOW_TITLE = "Tenkaichi Skill List Editor v1.3";
 	private static final Toolkit DEF_TOOLKIT = Toolkit.getDefaultToolkit();
 
 	private static File getFolderFromFileChooser()
@@ -81,9 +83,10 @@ public class App
 		Box btnBox = Box.createHorizontalBox();
 		ButtonGroup gameBtnGrp = new ButtonGroup();
 		ButtonGroup sklLstGrp = new ButtonGroup();
-		Dimension textAreaSize = new Dimension(256,32);
+		Dimension textFieldSize = new Dimension(256,48);
 		GridBagConstraints gbc = new GridBagConstraints();
 		JButton apply = new JButton("Apply Changes");
+		JCheckBox replaceCheck = new JCheckBox("Replace Once");
 		JFrame frame = new JFrame(WINDOW_TITLE);
 		JLabel emptyLblForBtn = new JLabel(" ");
 		JLabel[] labels = new JLabel[4];
@@ -95,24 +98,28 @@ public class App
 		JPanel panel = new JPanel(new GridBagLayout());
 		JRadioButton[] gameBtns = new JRadioButton[2];
 		JRadioButton[] sklLstBtns = new JRadioButton[Main.BT3_SKL_LST_LANGS.length];
-		JTextArea[] textAreas = new JTextArea[2];
+		JTextField[] textFields = new JTextField[2];
 		//set component properties
 		apply.setFont(MED);
-		apply.setToolTipText("Quotation marks and line breaks will be excluded from the string to find.");
+		apply.setToolTipText("Quotation marks will be excluded from the string to find.");
 		select.setToolTipText("Changes will be applied recursively, meaning that subfolders will also be detected in the chosen folder.");
+		replaceCheck.setFont(BOLD_S);
+		replaceCheck.setToolTipText("If selected, only the first instance of the string to find will be replaced.");
 		gbc.gridwidth = GridBagConstraints.REMAINDER;
 		for (int i=0; i<2; i++)
 		{
 			labels[i] = new JLabel(text[i]);
 			labels[i].setFont(BOLD);
 			labels[i].setToolTipText("String is case sensitive.");
-			textAreas[i] = new JTextArea();
-			textAreas[i].setFont(MED);
-			textAreas[i].setMinimumSize(textAreaSize);
-			textAreas[i].setMaximumSize(textAreaSize);
-			textAreas[i].setPreferredSize(textAreaSize);
+			textFields[i] = new JTextField();
+			textFields[i].setFont(MED);
+			textFields[i].setHorizontalAlignment(JTextField.CENTER);
+			textFields[i].setMinimumSize(textFieldSize);
+			textFields[i].setMaximumSize(textFieldSize);
+			textFields[i].setPreferredSize(textFieldSize);
 			panel.add(labels[i],gbc);
-			panel.add(textAreas[i],gbc);
+			panel.add(textFields[i],gbc);
+			if (i==1) panel.add(replaceCheck,gbc);
 			panel.add(new JLabel(" "),gbc);
 		}
 		labels[2] = new JLabel("Game Version:");
@@ -193,12 +200,17 @@ public class App
 				Box horBox = Box.createHorizontalBox();
 				JLabel label = new JLabel("Made by: ");
 				JLabel author = new JLabel(HTML_A_START+"ViveTheModder"+HTML_A_END);
-				author.addMouseListener(new MouseAdapter() {
+				author.addMouseListener(new MouseAdapter() 
+				{
 					@Override
-					public void mouseClicked(MouseEvent e) {
-						try {
+					public void mouseClicked(MouseEvent e) 
+					{
+						try 
+						{
 							Desktop.getDesktop().browse(new URI("https://github.com/ViveTheModder"));
-						} catch (IOException | URISyntaxException e1) {
+						} 
+						catch (IOException | URISyntaxException e1) 
+						{
 							errorBeep();
 							JOptionPane.showMessageDialog(frame, e1.getClass().getSimpleName()+": "+e1.getMessage(), "Exception", 0);
 						}
@@ -226,9 +238,23 @@ public class App
 								break;
 							}
 						}
-						String in = textAreas[0].getText().replace("\"", "").replace("\n", "");
-						String out = textAreas[1].getText().replace("\"", "").replace("\n", "");
-						setProgress(frame, sklLstIndex, in, out);
+						String in = textFields[0].getText().replace("\"", "");
+						String out = textFields[1].getText().replace("\"", "");
+						if (in.equals(""))
+						{
+							errorBeep();
+							JOptionPane.showMessageDialog(null, "No string to find has been specified!", WINDOW_TITLE, 0);
+						}
+						else if (in.equals(out))
+						{
+							errorBeep();
+							JOptionPane.showMessageDialog(null, "The strings to find and replace are identical!", WINDOW_TITLE, 0);
+						}
+						else 
+						{
+							Main.replaceOnce = replaceCheck.isSelected();
+							setProgress(frame, sklLstIndex, in, out);
+						}
 					} 
 					catch (IOException e1) 
 					{
@@ -250,6 +276,7 @@ public class App
 			{
 				currFolder = getFolderFromFileChooser();
 				if (currFolder!=null) frame.setTitle(WINDOW_TITLE+" - "+currFolder.getAbsolutePath());
+				else frame.setTitle(WINDOW_TITLE);
 			}
 		});
 		//add components
@@ -276,7 +303,7 @@ public class App
 		JDialog loading = new JDialog();
 		JPanel panel = new JPanel();
 		JLabel[] labels = {new JLabel("Working on:"),new JLabel("Time elapsed:")};
-		fileLabel = new JLabel(" "); fileCntLabel = new JLabel("Overwritten Costumes: 0");
+		fileLabel = new JLabel("(File Not Found)"); fileCntLabel = new JLabel("Overwritten Costumes: 0");
 		JLabel timeLabel = new JLabel();
 		GridBagConstraints gbc = new GridBagConstraints();
 		Timer timer = new Timer(100, e -> 
@@ -329,13 +356,25 @@ public class App
 			protected Void doInBackground() throws Exception 
 			{
 				long start = System.currentTimeMillis();
+				frame.setEnabled(false);
 				Main.traverse(currFolder, sklLstIndex, in, out);
 				long finish = System.currentTimeMillis();
 				double time = (finish-start)/1000.0;
 				loading.setVisible(false); 
 				loading.dispose();
-				DEF_TOOLKIT.beep();
-				JOptionPane.showMessageDialog(null, Main.fileCnt+" character costume files overwritten successfully in "+time+" seconds!", WINDOW_TITLE, 1);
+				if (Main.fileCnt>0)
+				{
+					DEF_TOOLKIT.beep();
+					JOptionPane.showMessageDialog(null, Main.fileCnt+" character costume files "
+					+ "overwritten successfully in "+time+" seconds!", WINDOW_TITLE, 1);
+				}
+				else
+				{
+					errorBeep();
+					JOptionPane.showMessageDialog(null, "No character costume files "
+					+ "found or changed!\nIf the PAKs are actually present, check if the string\n"
+					+ "to find and/or the affected Skill List is also present.", WINDOW_TITLE, 0);
+				}
 				frame.setEnabled(true);
 				timer.stop();
 				return null;
