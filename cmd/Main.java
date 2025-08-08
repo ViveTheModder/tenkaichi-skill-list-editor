@@ -7,9 +7,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Scanner;
 
+import gui.App;
+
 public class Main 
 {
-	public static boolean bt2Mode;
+	public static boolean bt2Mode, gui;
+	public static int fileCnt=0;
 	public static final String[] BT2_SKL_LST_LANGS = 
 	{"German","French","Italian","Japanese","Korean (Unused)","Spanish","British English","American English"};
 	public static final String[] BT3_SKL_LST_LANGS = 
@@ -92,11 +95,10 @@ public class Main
 					skl.write(outBytes);
 				}
 			}
-			//pos+=outLen-2;
 		}
 		String nvm="nevermind.";
 		if (replacements!=0) nvm="";
-		System.out.println(nvm);
+		if (!gui) System.out.println(nvm);
 		
 		byte[] newSklLst = new byte[(int)skl.length()];
 		skl.seek(0);
@@ -167,16 +169,24 @@ public class Main
 			if (nameArr.length>2) 
 				checkForDmgCostume = nameArr[nameArr.length-2].matches("\\dp") && nameArr[nameArr.length-1].equals("dmg.pak");
 			if (checkForRegCostume || checkForDmgCostume)
-			//if (nameLower.matches("[A-Za-z0-9]+_\\dp.pak") || nameLower.matches("[A-Za-z0-9]+_\\dp_dmg.pak"))
 			{
 				RandomAccessFile pak = new RandomAccessFile(src,"rw");
 				if (isCharaCostumePak(pak))
 				{
-					System.out.print("Replacing "+"\""+in+"\""+" with "+"\""+out+"\""+" for "+src.getName()+"... ");
+					if (!gui) System.out.print("Replacing "+"\""+in+"\""+" with "+"\""+out+"\""+" for "+src.getName()+"... ");
+					else
+					{
+						fileCnt++;
+						App.fileLabel.setText(src.getAbsolutePath());
+						App.fileCntLabel.setText("Overwritten Costumes: "+fileCnt);
+					}
 					byte[] newSklLst = getUpdatedSkillList(getSkillList(pak,sklLstId),in,out);
 					overwritePak(pak,newSklLst,sklLstId);
 				}
-				else System.out.println("Skipping "+src.getName()+" (Reason: Faulty character costume PAK)...");
+				else 
+				{
+					if (!gui) System.out.println("Skipping "+src.getName()+" (Reason: Faulty character costume PAK)...");
+				}
 			}
 		}
 	}
@@ -186,15 +196,15 @@ public class Main
 		File src=null;
 		Scanner sc = new Scanner(System.in);
 
-		System.out.println(HELP);
-		System.out.println("Possible Skill List ID values:\n* Budokai Tenkaichi 2");
-		for (int i=0; i<BT2_SKL_LST_LANGS.length; i++) System.out.println(i+". "+BT2_SKL_LST_LANGS[i]);
-		System.out.println("* Budokai Tenkaichi 3");
-		for (int i=0; i<BT3_SKL_LST_LANGS.length; i++) System.out.println(i+". "+BT3_SKL_LST_LANGS[i]);
-		System.out.println();
-
 		if (args.length>0)
 		{
+			System.out.println(HELP);
+			System.out.println("Possible Skill List ID values:\n* Budokai Tenkaichi 2");
+			for (int i=0; i<BT2_SKL_LST_LANGS.length; i++) System.out.println(i+". "+BT2_SKL_LST_LANGS[i]);
+			System.out.println("* Budokai Tenkaichi 3");
+			for (int i=0; i<BT3_SKL_LST_LANGS.length; i++) System.out.println(i+". "+BT3_SKL_LST_LANGS[i]);
+			System.out.println();
+
 			if (args.length>=3)
 			{
 				if (args[0].matches("[0-8]")) sklLstId=Integer.parseInt(args[0]);
@@ -222,31 +232,31 @@ public class Main
 					System.exit(2);
 				}
 			}
+			
+			while (src==null)
+			{
+				System.out.println("Enter a valid path to a folder (with or without subfolders) containing Skill Lists:");
+				String path = sc.nextLine();
+				File tmp = new File(path);
+				if (tmp.isDirectory()) src=tmp;
+			}
+			sc.close();
+			try 
+			{
+				long start = System.currentTimeMillis();
+				traverse(src,sklLstId,args[1].replace("\"", ""),args[2].replace("\"", ""));
+				long finish = System.currentTimeMillis();
+				System.out.println("Time elapsed: "+(finish-start)/1000.0+" s");
+			} 
+			catch (IOException e) 
+			{
+				e.printStackTrace();
+			}
 		}
-		else
+		else 
 		{
-			System.out.println("No arguments provided!");
-			System.exit(3);
-		}
-		
-		while (src==null)
-		{
-			System.out.println("Enter a valid path to a folder (with or without subfolders) containing Skill Lists:");
-			String path = sc.nextLine();
-			File tmp = new File(path);
-			if (tmp.isDirectory()) src=tmp;
-		}
-		sc.close();
-		try 
-		{
-			long start = System.currentTimeMillis();
-			traverse(src,sklLstId,args[1].replace("\"", ""),args[2].replace("\"", ""));
-			long finish = System.currentTimeMillis();
-			System.out.println("Time elapsed: "+(finish-start)/1000.0+" s");
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
+			gui=true;
+			App.main(args);
 		}
 	}
 }
