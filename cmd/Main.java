@@ -58,7 +58,7 @@ public class Main
 		byte[] inBytes = in.getBytes(StandardCharsets.UTF_16LE);
 		byte[] outBytes = out.getBytes(StandardCharsets.UTF_16LE);
  		int inLen=inBytes.length, outLen=outBytes.length, diff=inLen-outLen;
- 		int fileSize = sklLst.length, replacements=0;
+ 		int fileSize = sklLst.length, replacements=0, newFileSize = fileSize-diff;
 		byte[] searchBytes = new byte[inLen];
 		//make temporary file to dump byte array contents
 		RandomAccessFile skl = new RandomAccessFile("skl-lst","rw");
@@ -79,16 +79,6 @@ public class Main
 					skl.seek(pos);
 					skl.write(outBytes);
 					skl.write(restOfFile);
-					int newFileSize = fileSize-diff;
-					//if skill list gets smaller, overwrite leftover bytes with zeroes
-					if (newFileSize<fileSize)
-					{
-						skl.seek(newFileSize);
-						for (int i=newFileSize; i<fileSize; i++) skl.writeByte(0);
-					}
-					//round file size to the nearest multiple of 16
-					if (newFileSize%16!=0) newFileSize = newFileSize+16-(newFileSize%16);
-					skl.setLength(newFileSize);
 				}
 				else
 				{
@@ -98,6 +88,29 @@ public class Main
 				if (replaceOnce) break;
 			}
 		}
+		//if skill list gets smaller, overwrite leftover bytes with zeroes
+		if (newFileSize<fileSize)
+		{
+			skl.seek(newFileSize);
+			for (int i=newFileSize; i<fileSize; i++) skl.writeByte(0);
+		}
+		//remove excess rows of zeroes (16 bytes worth)
+		int bytesToRemove=0;
+		newFileSize = (int)skl.length();
+		for (int pos=newFileSize-16; pos>=(3*newFileSize)/4; pos-=16)
+		{
+			long footer1,footer2;
+			skl.seek(pos);
+			footer1 = skl.readLong();
+			footer2 = skl.readLong();
+			if (footer1==0 && footer2==0) bytesToRemove+=16;
+		}
+		newFileSize-=bytesToRemove;
+		skl.setLength(newFileSize);
+		//round file size to the nearest multiple of 16
+		if (newFileSize%16!=0) newFileSize = newFileSize+16-(newFileSize%16);
+		skl.setLength(newFileSize);
+
 		String nvm="nevermind.";
 		if (replacements!=0) nvm="";
 		if (!gui) System.out.println(nvm);

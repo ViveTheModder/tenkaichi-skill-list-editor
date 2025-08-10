@@ -49,7 +49,7 @@ public class App
 	private static final Font MED = new Font("Tahoma", 0, 18);
 	private static final String HTML_A_START = "<html><a href=''>";
 	private static final String HTML_A_END = "</a></html>";
-	private static final String WINDOW_TITLE = "Tenkaichi Skill List Editor v1.3";
+	private static final String WINDOW_TITLE = "Tenkaichi Skill List Editor v1.3.1";
 	private static final Toolkit DEF_TOOLKIT = Toolkit.getDefaultToolkit();
 
 	private static File getFolderFromFileChooser()
